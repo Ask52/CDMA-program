@@ -1,0 +1,69 @@
+tic
+processing_gain=64; %Set a value for processing gain
+sigma=1;
+max=5; % Determine total number of rounds
+collisions=0;
+message_errors=0;
+total_rounds=0;
+overflow=0;
+missed_tags=0;
+sim_runs=100000;
+packet_error_rate=0.2905; 
+for iruncount=1:sim_runs
+no_oftags=11; 
+    %If there are either collisions (due to two tags choosing the same spreading 
+    %code) or packets received in error, another round
+    % The loop below reduces the number of tags to
+    only those in collision or error and provides another round of transmission.
+    for irounds=1:max
+    collisionflag = zeros(1,no_oftags); %collisionflag is a 1xno_oftags array
+    %that will be used to indicate whether or not a particular tag's packet
+    %was involved in a collision 
+    errorflag = zeros(1,no_oftags); %errorflag is a 1xno_oftags array
+    % Randomly choose a spreading code for each tag
+    for tag =1:no_oftags
+        codechoice(tag)=randi(processing_gain);
+    end
+    % This loop determines the number of messages that collide because
+    % their tags chose the same spreading code.
+    for j=1:no_oftags
+        for k=j+1:no_oftags
+            if codechoice(j)==codechoice(k);
+            collisionflag(j)=1;
+            collisionflag(k)=1;
+            end
+        end
+    end
+    collisions=collisions+sum(collisionflag); % "collisions" contains total 
+    % number of collisions.
+% The large loop below determines if an uncollided tag's message is successfully
+% transmitted or if noise causes a packet error 
+    for j=1:no_oftags
+        if collisionflag(j)==1
+            continue % If collision occurred there is no reason to check noise
+        else
+            pick=rand;
+            if pick<=packet_error_rate
+                errorflag(j)=1;
+            else
+                errorflag(j)=0;
+            end
+        end
+    end
+    no_oftags=sum(collisionflag)+sum(errorflag);
+    total_rounds=total_rounds+1;
+    if no_oftags==0 
+        break
+    end
+    if irounds==max
+        overflow=overflow+1;
+        missed_tags=missed_tags+no_oftags;
+        break
+    end
+    end
+    message_errors=message_errors+sum(errorflag); % "message_errors" contains total 
+    % number of message errors due to noise.  Possibly a useful diagnostic.
+end	
+% missed_tags is the total number of tags that were not correctly received after sim_runs simulations.  Percentage in error =
+missed_tags/(no_oftags*sim_runs).
+toc
